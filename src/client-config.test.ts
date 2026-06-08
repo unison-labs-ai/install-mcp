@@ -1,5 +1,6 @@
 import { describe, it, expect } from "bun:test"
 import { getNestedValue, setNestedValue, getConfigPath, clientNames } from "./client-config"
+import { isUrl, isCommand, inferNameFromInput, buildCommand } from "./commands/install"
 
 describe("getNestedValue", () => {
   it("returns top-level value", () => {
@@ -89,5 +90,65 @@ describe("nanobot config", () => {
     const global = getConfigPath("nanobot", false)
     const local = getConfigPath("nanobot", true)
     expect(local.path).not.toBe(global.path)
+  })
+})
+
+describe("isUrl", () => {
+  it("returns true for https URLs", () => {
+    expect(isUrl("https://example.com/mcp")).toBe(true)
+  })
+
+  it("returns true for http URLs", () => {
+    expect(isUrl("http://localhost:3000")).toBe(true)
+  })
+
+  it("returns false for package names", () => {
+    expect(isUrl("@myorg/mcp-server")).toBe(false)
+  })
+
+  it("returns false for commands", () => {
+    expect(isUrl("npx my-mcp-server")).toBe(false)
+  })
+})
+
+describe("isCommand", () => {
+  it("returns true for strings containing a space", () => {
+    expect(isCommand("node server.js")).toBe(true)
+  })
+
+  it("returns true for npx-prefixed strings", () => {
+    expect(isCommand("npx @org/mcp")).toBe(true)
+  })
+
+  it("returns false for bare package names", () => {
+    expect(isCommand("@org/mcp-server")).toBe(false)
+  })
+})
+
+describe("inferNameFromInput", () => {
+  it("infers name from URL hostname", () => {
+    expect(inferNameFromInput("https://example.com/path")).toBe("example-com")
+  })
+
+  it("infers name from npx command", () => {
+    expect(inferNameFromInput("npx @org/mcp-server")).toBe("@org/mcp-server")
+  })
+
+  it("returns package name as-is for simple package", () => {
+    expect(inferNameFromInput("my-mcp-server")).toBe("my-mcp-server")
+  })
+})
+
+describe("buildCommand", () => {
+  it("wraps plain package name with npx", () => {
+    expect(buildCommand("my-mcp-server")).toBe("npx my-mcp-server")
+  })
+
+  it("returns full command unchanged", () => {
+    expect(buildCommand("npx -y my-server")).toBe("npx -y my-server")
+  })
+
+  it("returns URL unchanged", () => {
+    expect(buildCommand("https://example.com/mcp")).toBe("https://example.com/mcp")
   })
 })
