@@ -63,4 +63,31 @@ describe("clientNames", () => {
     expect(clientNames).toContain("codex")
     expect(clientNames).toContain("opencode")
   })
+
+  it("includes nanobot", () => {
+    expect(clientNames).toContain("nanobot")
+  })
+
+  it("has at least 19 clients", () => {
+    expect(clientNames.length).toBeGreaterThanOrEqual(19)
+  })
+})
+
+describe("nanobot config", () => {
+  it("uses tools.mcpServers configKey", () => {
+    const result = getConfigPath("nanobot")
+    expect(result.configKey).toBe("tools.mcpServers")
+  })
+
+  it("uses .nanobot/config.json path", () => {
+    const result = getConfigPath("nanobot")
+    expect(result.path).toContain(".nanobot")
+    expect(result.path).toContain("config.json")
+  })
+
+  it("returns local path when local=true", () => {
+    const global = getConfigPath("nanobot", false)
+    const local = getConfigPath("nanobot", true)
+    expect(local.path).not.toBe(global.path)
+  })
 })

@@ -137,6 +137,12 @@ function getClientPaths(): { [key: string]: ClientInstallTarget } {
       configKey: "mcp_servers",
       format: "toml",
     },
+    nanobot: {
+      type: "file",
+      path: path.join(homeDir, ".nanobot", "config.json"),
+      localPath: path.join(process.cwd(), ".nanobot", "config.json"),
+      configKey: "tools.mcpServers",
+    },
     opencode: {
       type: "file",
       path: path.join(homeDir, ".config", "opencode", "opencode.json"),
@@ -173,6 +179,7 @@ export const clientNames = [
   "zed",
   "droid",
   "warp",
+  "nanobot",
   // Desktop apps
   "claude-desktop",
   "windsurf",
