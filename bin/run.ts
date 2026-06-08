@@ -1,0 +1,18 @@
+import yargs from "yargs"
+import type { ArgumentsCamelCase, Argv } from "yargs"
+import { config } from "dotenv"
+import { builder, handler, type InstallArgv } from "../src/commands/install"
+
+config()
+
+const run = yargs(process.argv.slice(2))
+  .command({
+    command: "$0 [target]",
+    describe: "Install Unison Memory MCP server into your AI client",
+    builder: (yargs) => builder(yargs as unknown as Argv<InstallArgv>),
+    handler: (argv) => handler(argv as ArgumentsCamelCase<InstallArgv>),
+  })
+  .demandCommand(0, 1, "", "Too many arguments provided")
+  .strict()
+
+run.help().argv

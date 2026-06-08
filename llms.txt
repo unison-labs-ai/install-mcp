@@ -1,0 +1,39 @@
+# install-mcp
+
+> One-command CLI that installs the Unison Memory MCP server into any AI client
+> (Claude Code, Cursor, Codex, OpenCode, Windsurf, and more) and provisions a
+> `usk_` API key automatically — no manual setup required.
+
+**Agents: start with [AGENTS.md](AGENTS.md)** — it covers how to install the
+package, authenticate with a `usk_` key, and use the CLI from a script or
+agent context, plus how to contribute to this repo.
+
+## Docs
+
+- [README.md](README.md): what it does, usage, env vars, auth flow, supported clients
+- [AGENTS.md](AGENTS.md): agent-specific install guide and contributing section
+- [CONTRIBUTING.md](CONTRIBUTING.md): development workflow, conventions, PR checklist
+- [SECURITY.md](SECURITY.md): vulnerability reporting policy
+
+## Usage
+
+```bash
+npx @unisonlabs/install-mcp                        # interactive
+npx @unisonlabs/install-mcp --client claude-code   # specify client
+npx @unisonlabs/install-mcp --client cursor --yes  # skip confirmation
+UNISON_TOKEN=usk_... npx @unisonlabs/install-mcp   # bring your own token
+```
+
+## Examples
+
+```bash
+# Install for Claude Code with a known token, no prompts
+UNISON_TOKEN=usk_live_... UNISON_API_URL=https://api.unisonlabs.ai \
+  npx @unisonlabs/install-mcp --client claude-code --skip-auth --yes
+
+# Install project-scoped config for Cursor
+npx @unisonlabs/install-mcp --client cursor --local
+
+# Use a self-hosted brain
+npx @unisonlabs/install-mcp --client codex --api-url https://brain.example.com
+```
