@@ -1,5 +1,6 @@
 import type { ArgumentsCamelCase, Argv } from "yargs"
 import process from "node:process"
+import { spawn } from "node:child_process"
 import { logger } from "../logger"
 import { blue, green, red } from "picocolors"
 import {
@@ -62,12 +63,44 @@ function setServerConfig(
         ...serverConfig,
       }
     } else if (client === "opencode") {
-      servers[serverName] = {
-        type: "local",
-        command: serverConfig.command,
-        args: serverConfig.args || [],
-        enabled: true,
-        environment: serverConfig.env || {},
+      // Check for npx directly or wrapped via cmd /c npx (Windows)
+      const isNpxCommand =
+        serverConfig.command === "npx" ||
+        (serverConfig.command === "cmd" && serverConfig.args?.[0] === "/c" && serverConfig.args?.[1] === "npx")
+      const isNpxMcpRemote = isNpxCommand && serverConfig.args?.includes("mcp-remote@latest")
+      if (isNpxMcpRemote) {
+        // For remote MCP servers, OpenCode uses a different structure
+        const urlIndex = serverConfig.args.indexOf("mcp-remote@latest") + 1
+        const url = serverConfig.args[urlIndex]
+        const headers: Record<string, string> = {}
+
+        // Extract headers from args
+        let i = serverConfig.args.indexOf("--header") + 1
+        while (i > 0 && i < serverConfig.args.length) {
+          const headerArg = serverConfig.args[i]
+          if (headerArg && !headerArg.startsWith("--")) {
+            const [key, value] = headerArg.split(":")
+            if (key && value) {
+              headers[key.trim()] = value.trim()
+            }
+          }
+          i = serverConfig.args.indexOf("--header", i) + 1
+        }
+
+        servers[serverName] = {
+          type: "remote",
+          url: url,
+          enabled: true,
+          headers: Object.keys(headers).length > 0 ? headers : undefined,
+        }
+      } else {
+        servers[serverName] = {
+          type: "local",
+          command: serverConfig.command,
+          args: serverConfig.args || [],
+          enabled: true,
+          environment: serverConfig.env || {},
+        }
       }
     } else {
       servers[serverName] = serverConfig
@@ -82,6 +115,8 @@ export interface InstallArgv {
   token?: string
   apiUrl?: string
   "skip-auth"?: boolean
+  header?: Array<string>
+  env?: Array<string>
 }
 
 export const command = "$0"
@@ -117,6 +152,34 @@ export function builder(yargs: Argv<InstallArgv>): Argv {
       description: "Skip the auth provisioning step (token must already be set)",
       default: false,
     })
+    .option("header", {
+      type: "array",
+      description: 'Additional headers to pass to the MCP server (format: "Header: value")',
+      default: [],
+    })
+    .option("env", {
+      type: "array",
+      description: "Additional environment variables to pass to the server (format: --env KEY VALUE)",
+      default: [],
+    })
+}
+
+// Parse environment variables from flat array format [KEY, VALUE, KEY2, VALUE2] into key-value object
+function parseEnvVars(envArray?: Array<string>): { [key: string]: string } | undefined {
+  if (!envArray || envArray.length === 0) {
+    return undefined
+  }
+
+  const envObj: { [key: string]: string } = {}
+  for (let i = 0; i < envArray.length; i += 2) {
+    const key = envArray[i]
+    const value = envArray[i + 1]
+    if (key && value !== undefined) {
+      envObj[key] = value
+    }
+  }
+
+  return Object.keys(envObj).length > 0 ? envObj : undefined
 }
 
 async function resolveToken(argv: ArgumentsCamelCase<InstallArgv>): Promise<string> {
@@ -183,6 +246,8 @@ export async function handler(argv: ArgumentsCamelCase<InstallArgv>) {
     logger.warn("Could not verify token with /whoami — continuing anyway.")
   }
 
+  const extraEnvVars = parseEnvVars(argv.env)
+
   if (client === "warp") {
     logger.log("")
     logger.info("Warp requires a manual installation through their UI.")
@@ -190,16 +255,19 @@ export async function handler(argv: ArgumentsCamelCase<InstallArgv>) {
 
     const warpArgs = ["-y", UNISON_MCP_PACKAGE]
 
+    const warpEnv: Record<string, string> = {
+      UNISON_TOKEN: token,
+      UNISON_API_URL: process.env.UNISON_API_URL ?? UNISON_DEFAULT_API_URL,
+      ...extraEnvVars,
+    }
+
     logger.log(
       JSON.stringify(
         {
           [UNISON_SERVER_NAME]: {
             command: "npx",
             args: warpArgs,
-            env: {
-              UNISON_TOKEN: token,
-              UNISON_API_URL: process.env.UNISON_API_URL ?? UNISON_DEFAULT_API_URL,
-            },
+            env: warpEnv,
             working_directory: null,
             start_on_launch: true,
           },
@@ -231,13 +299,15 @@ export async function handler(argv: ArgumentsCamelCase<InstallArgv>) {
       const configKey = configPath.configKey
 
       const wrapped = wrapCommandForPlatform("npx", ["-y", UNISON_MCP_PACKAGE])
+      const serverEnv: Record<string, string> = {
+        UNISON_TOKEN: token,
+        UNISON_API_URL: process.env.UNISON_API_URL ?? UNISON_DEFAULT_API_URL,
+        ...extraEnvVars,
+      }
       const serverConfig: ClientConfig = {
         command: wrapped.command,
         args: wrapped.args,
-        env: {
-          UNISON_TOKEN: token,
-          UNISON_API_URL: process.env.UNISON_API_URL ?? UNISON_DEFAULT_API_URL,
-        },
+        env: serverEnv,
       }
 
       setServerConfig(config, configKey, UNISON_SERVER_NAME, serverConfig, client)
