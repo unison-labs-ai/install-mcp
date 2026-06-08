@@ -1,5 +1,6 @@
 import type { ArgumentsCamelCase, Argv } from "yargs"
 import process from "node:process"
+import { spawn } from "node:child_process"
 import { logger } from "../logger"
 import { blue, green, red } from "picocolors"
 import {
@@ -13,7 +14,6 @@ import {
 } from "../client-config"
 import { loadToken, whoami, runAuthFlow } from "../auth"
 
-// The MCP server name and command as registered in the Unison brief
 const UNISON_SERVER_NAME = "unison-brain"
 const UNISON_MCP_PACKAGE = "@unisonlabs/mcp"
 const UNISON_DEFAULT_API_URL = "https://api.unisonlabs.ai"
@@ -62,18 +62,15 @@ function setServerConfig(
         ...serverConfig,
       }
     } else if (client === "opencode") {
-      // Check for npx directly or wrapped via cmd /c npx (Windows)
       const isNpxCommand =
         serverConfig.command === "npx" ||
         (serverConfig.command === "cmd" && serverConfig.args?.[0] === "/c" && serverConfig.args?.[1] === "npx")
       const isNpxMcpRemote = isNpxCommand && serverConfig.args?.includes("mcp-remote@latest")
       if (isNpxMcpRemote) {
-        // For remote MCP servers, OpenCode uses a different structure
         const urlIndex = serverConfig.args.indexOf("mcp-remote@latest") + 1
         const url = serverConfig.args[urlIndex]
         const headers: Record<string, string> = {}
 
-        // Extract headers from args
         let i = serverConfig.args.indexOf("--header") + 1
         while (i > 0 && i < serverConfig.args.length) {
           const headerArg = serverConfig.args[i]
@@ -108,6 +105,8 @@ function setServerConfig(
 }
 
 export interface InstallArgv {
+  target?: string
+  name?: string
   client?: string
   local?: boolean
   yes?: boolean
@@ -115,14 +114,24 @@ export interface InstallArgv {
   apiUrl?: string
   "skip-auth"?: boolean
   header?: Array<string>
+  oauth?: "yes" | "no"
+  project?: string
   env?: Array<string>
 }
 
-export const command = "$0"
-export const describe = "Install the Unison Memory MCP server into your AI client"
+export const command = "$0 [target]"
+export const describe = "Install an MCP server (default: Unison Memory)"
 
 export function builder(yargs: Argv<InstallArgv>): Argv {
   return yargs
+    .positional("target", {
+      type: "string",
+      description: "Package name, full command, or URL to install (omit to install Unison Memory)",
+    })
+    .option("name", {
+      type: "string",
+      description: "Name of the server (auto-extracted from target if not provided)",
+    })
     .option("client", {
       type: "string",
       description: "Client to install for (claude-code, cursor, windsurf, etc.)",
@@ -148,19 +157,78 @@ export function builder(yargs: Argv<InstallArgv>): Argv {
     })
     .option("skip-auth", {
       type: "boolean",
-      description: "Skip the auth provisioning step (token must already be set)",
+      description: "Skip the Unison auth provisioning step (token must already be set)",
       default: false,
     })
     .option("header", {
       type: "array",
-      description: 'Additional headers to pass to the MCP server (format: "Header: value")',
+      description: 'Headers to pass to the server (format: "Header: value")',
       default: [],
     })
+    .option("project", {
+      type: "string",
+      description: "Project identifier passed as x-sm-project header for supermemory.ai URLs",
+    })
+    .option("oauth", {
+      type: "string",
+      description: "Whether the server uses OAuth authentication (yes/no). If not specified, you will be prompted.",
+      choices: ["yes", "no"],
+    } as const)
     .option("env", {
       type: "array",
-      description: "Additional environment variables to pass to the server (format: --env KEY VALUE)",
+      description: "Environment variables to pass to the server (format: --env KEY VALUE)",
       default: [],
     })
+}
+
+export function isUrl(input: string): boolean {
+  return input.startsWith("http://") || input.startsWith("https://")
+}
+
+export function isCommand(input: string): boolean {
+  return input.includes(" ") || input.startsWith("npx ") || input.startsWith("node ")
+}
+
+export function inferNameFromInput(input: string): string {
+  if (isUrl(input)) {
+    try {
+      const url = new URL(input)
+      return url.hostname.replace(/\./g, "-")
+    } catch {
+      const parts = input.split("/")
+      return parts[parts.length - 1] || "server"
+    }
+  } else if (isCommand(input)) {
+    const parts = input.split(" ")
+    if (parts[0] === "npx" && parts.length > 1) {
+      const packageIndex = parts.findIndex((part, index) => index > 0 && !part.startsWith("-"))
+      if (packageIndex !== -1) {
+        return parts[packageIndex] || "server"
+      }
+    }
+    return parts[0] || "server"
+  } else {
+    return input
+  }
+}
+
+export function buildCommand(input: string): string {
+  if (isUrl(input)) {
+    return input
+  } else if (isCommand(input)) {
+    return input
+  } else {
+    return `npx ${input}`
+  }
+}
+
+function isSupermemoryUrl(input: string): boolean {
+  try {
+    const url = new URL(input)
+    return url.hostname === "api.supermemory.ai"
+  } catch {
+    return false
+  }
 }
 
 // Parse environment variables from flat array format [KEY, VALUE, KEY2, VALUE2] into key-value object
@@ -181,17 +249,32 @@ function parseEnvVars(envArray?: Array<string>): { [key: string]: string } | und
   return Object.keys(envObj).length > 0 ? envObj : undefined
 }
 
+// Run the authentication flow for remote servers before installation.
+async function runAuthentication(url: string): Promise<void> {
+  logger.info(`Running authentication for ${url}`)
+  return new Promise((resolve, reject) => {
+    const child = spawn("npx", ["-y", "-p", "mcp-remote@latest", "mcp-remote-client", url], {
+      stdio: ["ignore", "ignore", "ignore"],
+      shell: isWindows,
+    })
+
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve()
+      } else {
+        reject(new Error(`Authentication exited with code ${code}`))
+      }
+    })
+
+    child.on("error", reject)
+  })
+}
+
 async function resolveToken(argv: ArgumentsCamelCase<InstallArgv>): Promise<string> {
-  // 1. Explicit flag
   if (argv.token) return argv.token
-
-  // 2. Environment variable
   if (process.env.UNISON_TOKEN) return process.env.UNISON_TOKEN
-
-  // 3. Saved credential file
   const saved = loadToken()
   if (saved) {
-    // Verify it's still valid
     try {
       await whoami(saved)
       return saved
@@ -199,19 +282,15 @@ async function resolveToken(argv: ArgumentsCamelCase<InstallArgv>): Promise<stri
       logger.warn("Saved token is invalid or expired. Re-running auth flow.")
     }
   }
-
-  // 4. Run interactive provision/verify flow
   return runAuthFlow()
 }
 
 export async function handler(argv: ArgumentsCamelCase<InstallArgv>) {
-  // Set API URL override if provided
   if (argv.apiUrl) {
     process.env.UNISON_API_URL = argv.apiUrl
   }
 
   let client = argv.client
-
   if (!client || !clientNames.includes(client)) {
     client = (await logger.prompt("Select a client to install for:", {
       type: "select",
@@ -219,7 +298,19 @@ export async function handler(argv: ArgumentsCamelCase<InstallArgv>) {
     })) as string
   }
 
-  // Resolve the Unison token (provision if needed)
+  const target = argv.target
+
+  // No target → install Unison Memory (default behavior)
+  if (!target) {
+    await installUnison(argv, client)
+    return
+  }
+
+  // Generic target path
+  await installGeneric(argv, client, target)
+}
+
+async function installUnison(argv: ArgumentsCamelCase<InstallArgv>, client: string): Promise<void> {
   let token: string
   if (argv["skip-auth"]) {
     const raw = argv.token ?? process.env.UNISON_TOKEN ?? loadToken()
@@ -237,7 +328,6 @@ export async function handler(argv: ArgumentsCamelCase<InstallArgv>) {
     }
   }
 
-  // Confirm with whoami
   try {
     const me = await whoami(token)
     logger.info(`Authenticated as ${me.user.email} (tenant: ${me.tenant.name})`)
@@ -253,7 +343,6 @@ export async function handler(argv: ArgumentsCamelCase<InstallArgv>) {
     logger.log("  Please copy the following configuration object and add it to your Warp MCP config:\n")
 
     const warpArgs = ["-y", UNISON_MCP_PACKAGE]
-
     const warpEnv: Record<string, string> = {
       UNISON_TOKEN: token,
       UNISON_API_URL: process.env.UNISON_API_URL ?? UNISON_DEFAULT_API_URL,
@@ -316,6 +405,148 @@ export async function handler(argv: ArgumentsCamelCase<InstallArgv>) {
       logger.info(`Restart ${client} to activate the Unison Memory MCP server.`)
       logger.info(`\nBrain tools available: brain_search, brain_get, brain_write, brain_record_fact, and more.`)
       logger.info(`Docs: ${blue("https://unisonlabs.ai/docs/mcp")}`)
+    } catch (e) {
+      logger.error(red((e as Error).message))
+    }
+  }
+}
+
+async function installGeneric(argv: ArgumentsCamelCase<InstallArgv>, client: string, target: string): Promise<void> {
+  const name = argv.name || inferNameFromInput(target)
+  const cmd = buildCommand(target)
+  const envVars = parseEnvVars(argv.env)
+
+  // Resolve supermemory project header when installing its URL
+  let projectHeader: string | undefined
+  if (isUrl(target) && isSupermemoryUrl(target)) {
+    let project = typeof argv.project === "string" ? argv.project : undefined
+    if (!project || project.trim() === "") {
+      const input = (await logger.prompt(
+        'Enter your Supermemory project (no spaces). Press Enter for "default" (you can override per LLM session).',
+        { type: "text" }
+      )) as string
+      project = (input || "").trim() || "default"
+    }
+    if (/\s/.test(project)) {
+      logger.error("Project must not contain spaces. Use hyphens or underscores instead.")
+      return
+    }
+    projectHeader = `x-sm-project:${project}`
+  }
+
+  if (client === "warp") {
+    logger.log("")
+    logger.info("Warp requires a manual installation through their UI.")
+    logger.log("  Please copy the following configuration object and add it to your Warp MCP config:\n")
+
+    let warpArgs: Array<string>
+    if (isUrl(target)) {
+      warpArgs = ["-y", "mcp-remote@latest", target]
+      if (argv.header && argv.header.length > 0) {
+        for (const header of argv.header) {
+          warpArgs.push("--header", header)
+        }
+      }
+      if (projectHeader) {
+        warpArgs.push("--header", projectHeader)
+      }
+    } else {
+      warpArgs = cmd.split(" ").slice(1)
+    }
+
+    logger.log(
+      JSON.stringify(
+        {
+          [name]: {
+            command: isUrl(target) ? "npx" : cmd.split(" ")[0],
+            args: warpArgs,
+            env: envVars || {},
+            working_directory: null,
+            start_on_launch: true,
+          },
+        },
+        null,
+        2
+      )
+        .split("\n")
+        .map((line) => green(`  ${line}`))
+        .join("\n")
+    )
+    logger.box("Read Warp's documentation at", blue("https://docs.warp.dev/knowledge-and-collaboration/mcp"))
+    return
+  }
+
+  logger.info(`Installing MCP server "${name}" for ${client}${argv.local ? " (locally)" : ""}`)
+
+  let ready = argv.yes
+  if (!ready) {
+    ready = await logger.prompt(green(`Install MCP server "${name}" in ${client}?`), {
+      type: "confirm",
+    })
+  }
+
+  if (ready) {
+    if (isUrl(target)) {
+      let usesOAuth: boolean
+      if (argv.oauth === "yes") {
+        usesOAuth = true
+      } else if (argv.oauth === "no") {
+        usesOAuth = false
+      } else {
+        usesOAuth = await logger.prompt("Does this server use OAuth authentication?", {
+          type: "confirm",
+        })
+      }
+
+      if (usesOAuth) {
+        try {
+          await runAuthentication(target)
+        } catch {
+          logger.error("Authentication failed. Use the client to authenticate.")
+          return
+        }
+      }
+    }
+
+    try {
+      const config = readConfig(client, argv.local)
+      const configPath = getConfigPath(client, argv.local)
+      const configKey = configPath.configKey
+
+      if (isUrl(target)) {
+        const args = ["-y", "mcp-remote@latest", target]
+        if (argv.header && argv.header.length > 0) {
+          for (const header of argv.header) {
+            args.push("--header", header)
+          }
+        }
+        if (projectHeader) {
+          args.push("--header", projectHeader)
+        }
+        const wrapped = wrapCommandForPlatform("npx", args)
+        const serverConfig: ClientConfig = {
+          command: wrapped.command,
+          args: wrapped.args,
+        }
+        if (envVars) {
+          serverConfig.env = envVars
+        }
+        setServerConfig(config, configKey, name, serverConfig, client)
+      } else {
+        const cmdParts = cmd.split(" ")
+        const wrapped = wrapCommandForPlatform(cmdParts[0] || cmd, cmdParts.slice(1))
+        const serverConfig: ClientConfig = {
+          command: wrapped.command,
+          args: wrapped.args,
+        }
+        if (envVars) {
+          serverConfig.env = envVars
+        }
+        setServerConfig(config, configKey, name, serverConfig, client)
+      }
+
+      writeConfig(config, client, argv.local)
+      logger.box(green(`Successfully installed MCP server "${name}" in ${client}${argv.local ? " (locally)" : ""}`))
     } catch (e) {
       logger.error(red((e as Error).message))
     }
