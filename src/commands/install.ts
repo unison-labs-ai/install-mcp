@@ -1,6 +1,5 @@
 import type { ArgumentsCamelCase, Argv } from "yargs"
 import process from "node:process"
-import { spawn } from "node:child_process"
 import { logger } from "../logger"
 import { blue, green, red } from "picocolors"
 import {
