@@ -16,7 +16,7 @@ import { loadToken, whoami, runAuthFlow } from "../auth"
 
 const UNISON_SERVER_NAME = "unison-brain"
 const UNISON_MCP_PACKAGE = "@unisonlabs/mcp"
-const UNISON_DEFAULT_API_URL = "https://api.unisonlabs.ai"
+const UNISON_DEFAULT_API_URL = "https://brain.unisonlabs.ai"
 
 const isWindows = process.platform === "win32"
 
