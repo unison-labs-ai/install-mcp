@@ -48,7 +48,7 @@ npx @unisonlabs/install-mcp --client claude-code --token usk_live_...
 ### Custom API URL
 
 ```bash
-npx @unisonlabs/install-mcp --client cursor --api-url https://api.unisonlabs.ai
+npx @unisonlabs/install-mcp --client cursor --api-url https://brain.unisonlabs.ai
 ```
 
 ### Skip auth (token must already be set)
@@ -62,7 +62,7 @@ npx @unisonlabs/install-mcp --client codex --skip-auth
 | Variable | Description | Default |
 |---|---|---|
 | `UNISON_TOKEN` | Your `usk_live_...` API key | — |
-| `UNISON_API_URL` | Unison API base URL | `https://api.unisonlabs.ai` |
+| `UNISON_API_URL` | Unison API base URL | `https://brain.unisonlabs.ai` |
 
 The installed MCP config also sets these env vars so the MCP server can reach the brain.
 
@@ -123,7 +123,7 @@ Once installed, the following tools are available inside your client:
       "args": ["-y", "@unisonlabs/mcp"],
       "env": {
         "UNISON_TOKEN": "usk_live_...",
-        "UNISON_API_URL": "https://api.unisonlabs.ai"
+        "UNISON_API_URL": "https://brain.unisonlabs.ai"
       }
     }
   }

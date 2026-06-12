@@ -28,7 +28,7 @@ UNISON_TOKEN=usk_... npx @unisonlabs/install-mcp   # bring your own token
 
 ```bash
 # Install for Claude Code with a known token, no prompts
-UNISON_TOKEN=usk_live_... UNISON_API_URL=https://api.unisonlabs.ai \
+UNISON_TOKEN=usk_live_... UNISON_API_URL=https://brain.unisonlabs.ai \
   npx @unisonlabs/install-mcp --client claude-code --skip-auth --yes
 
 # Install project-scoped config for Cursor

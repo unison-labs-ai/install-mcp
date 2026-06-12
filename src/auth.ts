@@ -6,7 +6,7 @@ import { logger } from "./logger"
 const UNISON_CONFIG_DIR = path.join(os.homedir(), ".config", "unison")
 const UNISON_CONFIG_FILE = path.join(UNISON_CONFIG_DIR, "config.json")
 
-const DEFAULT_API_URL = "https://api.unisonlabs.ai"
+const DEFAULT_API_URL = "https://brain.unisonlabs.ai"
 
 export interface UnisonConfig {
   token: string

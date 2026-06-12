@@ -38,7 +38,7 @@ For a fully non-interactive install (agent-driven), pass `--client`, `--skip-aut
 and `--yes`:
 
 ```bash
-UNISON_TOKEN=usk_live_... UNISON_API_URL=https://api.unisonlabs.ai \
+UNISON_TOKEN=usk_live_... UNISON_API_URL=https://brain.unisonlabs.ai \
   npx @unisonlabs/install-mcp --client claude-code --skip-auth --yes
 ```
 
@@ -71,7 +71,7 @@ After the installer runs, the client config contains:
       "args": ["-y", "@unisonlabs/mcp"],
       "env": {
         "UNISON_TOKEN": "usk_live_...",
-        "UNISON_API_URL": "https://api.unisonlabs.ai"
+        "UNISON_API_URL": "https://brain.unisonlabs.ai"
       }
     }
   }
@@ -86,7 +86,7 @@ Ask the user to restart their client. The MCP tools (`brain_search`, `brain_get`
 | Variable | Description | Default |
 |---|---|---|
 | `UNISON_TOKEN` | `usk_live_...` API key | — (prompted if absent) |
-| `UNISON_API_URL` | Base URL of the Unison brain API | `https://api.unisonlabs.ai` |
+| `UNISON_API_URL` | Base URL of the Unison brain API | `https://brain.unisonlabs.ai` |
 
 ### Supported clients
 
