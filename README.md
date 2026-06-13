@@ -111,8 +111,6 @@ Once installed, the following tools are available inside your client:
 
 **Web:** `web_search`
 
-**Workspace domains (preview):** `tasks_list`, `tasks_create`, `workspace_team_spaces`, `mail_threads`, `chat_channels`, `crm_search_records`, `calendar_events`, `people_search`
-
 ## What gets written to your config
 
 ```json
