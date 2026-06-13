@@ -1,21 +1,40 @@
-# Unison Memory — install-mcp
+<div align="center">
 
-One-command CLI to install the [Unison Memory](https://unisonlabs.ai) MCP server into any AI client — Claude Code, Cursor, Codex, OpenCode, Windsurf, and more. Auth is included: the installer provisions or recovers your `usk_` API key automatically.
+<img src="https://raw.githubusercontent.com/unison-labs-ai/unison-brain/main/assets/brain.svg" width="140" />
 
-## What it does
+# install-mcp
 
-1. Detects (or asks for) your target client.
-2. Provisions a Unison Memory account and mints a `usk_live_...` API key via the machine-auth flow — or recovers your existing key if the email is already registered.
-3. Writes the MCP server entry (`@unisonlabs/mcp`) into the client's config file with `UNISON_TOKEN` and `UNISON_API_URL` env vars set.
-4. Done — restart your client and the brain tools are available.
+**One command. Persistent memory in every AI client you already use.**
 
-## Usage
+Add the [Unison brain](https://unisonlabs.ai) to Claude Code, Cursor, Codex, Windsurf, or any of 17 other clients — auth included, no config editing required.
+
+[![CI](https://github.com/unison-labs-ai/install-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/unison-labs-ai/install-mcp/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@unisonlabs/install-mcp?logo=npm&color=cb3837&label=npm)](https://www.npmjs.com/package/@unisonlabs/install-mcp)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![Stars](https://img.shields.io/github/stars/unison-labs-ai/install-mcp?style=social)](https://github.com/unison-labs-ai/install-mcp)
+
+[**Quickstart**](#quickstart) • [**Supported clients**](#supported-clients) • [**Flags**](#flags) • [**MCP tools**](#mcp-tools) • [**Auth flow**](#auth-flow)
+
+</div>
+
+---
+
+## Quickstart
 
 ```bash
 npx @unisonlabs/install-mcp
 ```
 
-The CLI prompts for your client and email, then handles everything else.
+The CLI prompts for your client and email, then handles everything else: provisions your account, mints a `usk_live_...` API key, and writes the MCP server entry into your client's config file. Restart your client — the brain tools are live.
+
+## What it does
+
+1. Detects (or asks for) your target client.
+2. Provisions a Unison account and mints a `usk_live_...` API key via the machine-auth flow — or recovers your existing key if the email is already registered.
+3. Writes the MCP server entry (`@unisonlabs/mcp`) into the client's config file with `UNISON_TOKEN` and `UNISON_API_URL` env vars set.
+4. Done — restart your client and the brain tools are available.
+
+## Supported clients
 
 ### Specify client directly
 
@@ -24,6 +43,29 @@ npx @unisonlabs/install-mcp --client claude-code
 npx @unisonlabs/install-mcp --client cursor
 npx @unisonlabs/install-mcp --client windsurf
 ```
+
+| Client | Flag |
+|---|---|
+| Claude Code | `--client claude-code` |
+| Cursor | `--client cursor` |
+| OpenCode | `--client opencode` |
+| VS Code | `--client vscode` |
+| Codex CLI | `--client codex` |
+| Gemini CLI | `--client gemini-cli` |
+| Zed | `--client zed` |
+| Windsurf | `--client windsurf` |
+| Claude Desktop | `--client claude-desktop` |
+| Cline | `--client cline` |
+| Roo-Cline | `--client roo-cline` |
+| Goose | `--client goose` |
+| Aider | `--client aider` |
+| Aider Desk | `--client aider-desk` |
+| Witsy | `--client witsy` |
+| Enconvo | `--client enconvo` |
+| Warp | `--client warp` (prints config to paste) |
+| Droid | `--client droid` |
+
+## Flags
 
 ### Skip confirmations
 
@@ -78,29 +120,6 @@ If your email is already registered, the installer runs the recovery flow (`/v1/
 
 The minted token is saved to `~/.config/unison/config.json` and used on subsequent installs without prompting.
 
-## Supported clients
-
-| Client | Flag |
-|---|---|
-| Claude Code | `--client claude-code` |
-| Cursor | `--client cursor` |
-| OpenCode | `--client opencode` |
-| VS Code | `--client vscode` |
-| Codex CLI | `--client codex` |
-| Gemini CLI | `--client gemini-cli` |
-| Zed | `--client zed` |
-| Windsurf | `--client windsurf` |
-| Claude Desktop | `--client claude-desktop` |
-| Cline | `--client cline` |
-| Roo-Cline | `--client roo-cline` |
-| Goose | `--client goose` |
-| Aider | `--client aider` |
-| Aider Desk | `--client aider-desk` |
-| Witsy | `--client witsy` |
-| Enconvo | `--client enconvo` |
-| Warp | `--client warp` (prints config to paste) |
-| Droid | `--client droid` |
-
 ## MCP tools
 
 Once installed, the following tools are available inside your client:
@@ -130,6 +149,34 @@ Once installed, the following tools are available inside your client:
 }
 ```
 
+## Star history
+
+If this saved you time, a star helps others find it.
+
+[![Star history chart](https://api.star-history.com/svg?repos=unison-labs-ai/install-mcp&type=Date)](https://star-history.com/#unison-labs-ai/install-mcp&Date)
+
 ## License
 
 MIT
+
+---
+
+## Part of the Unison Labs constellation
+
+**One brain, every agent.** Every repo below reads from _and writes to_ the same [Unison brain](https://unisonlabs.ai) — no per-tool memory silos.
+
+| Repo | What it does |
+|---|---|
+| [unison-brain](https://github.com/unison-labs-ai/unison-brain) | CLI · SDK · MCP server — the core |
+| [claude-unison](https://github.com/unison-labs-ai/claude-unison) | Memory for Claude Code |
+| [cursor-unison](https://github.com/unison-labs-ai/cursor-unison) | Memory for Cursor |
+| [codex-unison](https://github.com/unison-labs-ai/codex-unison) | Memory for OpenAI Codex CLI |
+| [opencode-unison](https://github.com/unison-labs-ai/opencode-unison) | Memory for OpenCode |
+| [openclaw-unison](https://github.com/unison-labs-ai/openclaw-unison) | Memory for OpenClaw |
+| [pipecat-unison](https://github.com/unison-labs-ai/pipecat-unison) | Memory for Pipecat voice agents |
+| [python-sdk](https://github.com/unison-labs-ai/python-sdk) | Python SDK for the brain |
+| **[install-mcp](https://github.com/unison-labs-ai/install-mcp)** | **One-command MCP installer** ← you are here |
+| [code-chunk](https://github.com/unison-labs-ai/code-chunk) | AST-aware code chunking |
+| [unison-fs](https://github.com/unison-labs-ai/unison-fs) | Mount the brain as a filesystem |
+| [backchannel](https://github.com/unison-labs-ai/backchannel) | Async messaging between agents |
+| [Unison-evals](https://github.com/unison-labs-ai/Unison-evals) | Open memory benchmark suite |
