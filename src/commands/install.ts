@@ -330,7 +330,7 @@ async function installUnison(argv: ArgumentsCamelCase<InstallArgv>, client: stri
 
   try {
     const me = await whoami(token)
-    logger.info(`Authenticated as ${me.user.email} (tenant: ${me.tenant.name})`)
+    logger.info(`Authenticated as ${me.user.email} (workspace: ${me.workspace.name})`)
   } catch {
     logger.warn("Could not verify token with /whoami — continuing anyway.")
   }
