@@ -11,12 +11,12 @@ const DEFAULT_API_URL = "https://brain.unisonlabs.ai"
 export interface UnisonConfig {
   token: string
   email?: string
-  tenantId?: string
+  workspaceId?: string
 }
 
 export interface ProvisionResult {
   apiKey: string
-  tenantId: string
+  workspaceId: string
   status: string
   emailSent: boolean
   message: string
@@ -25,12 +25,12 @@ export interface ProvisionResult {
 export interface VerifyResult {
   verified: boolean
   apiKey?: string
-  tenantId: string
+  workspaceId: string
 }
 
 export interface WhoamiResult {
   user: { id: string; email: string }
-  tenant: { id: string; name: string; verified: boolean }
+  workspace: { id: string; name: string; verified: boolean }
   scopes: Array<string>
 }
 
@@ -56,11 +56,11 @@ function getToken(): string | undefined {
   return undefined
 }
 
-export function saveToken(token: string, email?: string, tenantId?: string): void {
+export function saveToken(token: string, email?: string, workspaceId?: string): void {
   if (!fs.existsSync(UNISON_CONFIG_DIR)) {
     fs.mkdirSync(UNISON_CONFIG_DIR, { recursive: true })
   }
-  const config: UnisonConfig = { token, email, tenantId }
+  const config: UnisonConfig = { token, email, workspaceId }
   fs.writeFileSync(UNISON_CONFIG_FILE, JSON.stringify(config, null, 2))
 }
 
@@ -128,7 +128,7 @@ export async function provision(email: string): Promise<ProvisionResult> {
 
 /**
  * POST /v1/auth/verify — verify OTP from email.
- * Returns {verified, tenantId} on first-time, or {verified, apiKey, tenantId} on recovery.
+ * Returns {verified, workspaceId} on first-time, or {verified, apiKey, workspaceId} on recovery.
  */
 export async function verify(email: string, code: string): Promise<VerifyResult> {
   return apiPost<VerifyResult>("/auth/verify", { email, code })
@@ -142,7 +142,7 @@ export async function requestKey(email: string): Promise<{ status: string }> {
 }
 
 /**
- * GET /v1/auth/whoami — confirm auth and fetch tenant/scope info.
+ * GET /v1/auth/whoami — confirm auth and fetch workspace/scope info.
  */
 export async function whoami(token: string): Promise<WhoamiResult> {
   return apiGet<WhoamiResult>("/auth/whoami", token)
@@ -188,7 +188,7 @@ export async function runAuthFlow(): Promise<string> {
       apiKey = verifyResult.apiKey
     }
 
-    saveToken(apiKey, email, verifyResult.tenantId)
+    saveToken(apiKey, email, verifyResult.workspaceId)
     logger.success("Account verified and token saved to ~/.config/unison/config.json")
   } catch (err) {
     const e = err as Error & { code?: string }
@@ -213,7 +213,7 @@ export async function runAuthFlow(): Promise<string> {
       }
 
       apiKey = verifyResult.apiKey
-      saveToken(apiKey, email, verifyResult.tenantId)
+      saveToken(apiKey, email, verifyResult.workspaceId)
       logger.success("Account verified and token saved to ~/.config/unison/config.json")
     } else {
       throw e
